@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "ES2019",
+        "lib": [
+            "ES2019",
+            "DOM"
+        ],
+        "types": [
+            "google-apps-script"
+        ],
+        "skipLibCheck": true,
+        "strict": true,
+        "noImplicitAny": true,
+        "experimentalDecorators": true,
+        "rootDir": "src",
+        "outDir": "dist"
+    },
+    "include": [
+        "src/**/*"
+    ]
+}

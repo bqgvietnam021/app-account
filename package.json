@@ -1,0 +1,21 @@
+{
+  "name": "app-account",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && node -e \"const fs = require('fs'); ['appsscript.json', 'index.html'].forEach(f => fs.copyFileSync('src/' + f, 'dist/' + f)); fs.copyFileSync('src/index.html', 'index.html');\"",
+    "push": "npm run build && clasp push -f && clasp deploy -i AKfycbxCrGW3huEVu6rrCC3VUAMfj9q8n05C_9KdWUED5XYJJK23Bsyud_7bX1RFNx_ce5o",
+    "deploy": "clasp deploy -i AKfycbxCrGW3huEVu6rrCC3VUAMfj9q8n05C_9KdWUED5XYJJK23Bsyud_7bX1RFNx_ce5o",
+    "open": "clasp open-script",
+    "open:webapp": "clasp open-web-app"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/google-apps-script": "^2.0.13",
+    "typescript": "^7.0.2"
+  }
+}

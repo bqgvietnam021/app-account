@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMM Account & Media Manager</title>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f1f5f9;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glow-indigo:focus-within {
+      box-shadow: 0 0 20px -3px rgba(99, 102, 241, 0.35);
+    }
+    /* Smooth transitions */
+    .tree-expand-transition {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ===================================================================== */
+    /* GMAIL-STYLE TOP LOADING STRIPE & STATUS PILL                          */
+    /* ===================================================================== */
+    #gmailLoadingBar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3.5px;
+      z-index: 99999;
+      background: transparent;
+      overflow: hidden;
+      display: none;
+    }
+    #gmailLoadingBar.active {
+      display: block;
+    }
+    #gmailLoadingBar .bar-track {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: rgba(99, 102, 241, 0.15);
+      overflow: hidden;
+    }
+    #gmailLoadingBar .bar-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, #4285F4, #34A853, #FBBC05, #EA4335, #4285F4);
+      background-size: 300% 100%;
+      animation: gmailStripe 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      box-shadow: 0 0 10px rgba(66, 133, 244, 0.8), 0 0 4px #EA4335;
+    }
+    @keyframes gmailStripe {
+      0% {
+        left: -40%;
+        width: 40%;
+      }
+      50% {
+        left: 20%;
+        width: 80%;
+      }
+      100% {
+        left: 100%;
+        width: 40%;
+      }
+    }
+
+    /* Gmail Floating Center Status Pill */
+    #gmailStatusPill {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-55px);
+      z-index: 99998;
+      transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+      pointer-events: none;
+    }
+    #gmailStatusPill.active {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body class="h-full antialiased text-slate-100 flex flex-col min-h-screen">
+
+  <!-- ===================================================================== -->
+  <!-- GMAIL-STYLE TOP LOADING STRIPE & STATUS PILL                          -->
+  <!-- ===================================================================== -->
+  <div id="gmailLoadingBar">
+    <div class="bar-track">
+      <div class="bar-indicator"></div>
+    </div>
+  </div>
+
+  <div id="gmailStatusPill" class="flex items-center">
+    <div id="gmailStatusContent" class="px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-2.5 text-xs font-semibold border backdrop-blur-xl bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-amber-500/10 transition-all">
+      <div id="gmailStatusSpinner" class="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+      <span id="gmailStatusText" class="tracking-wide">Đang kết nối...</span>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <!-- ===================================================================== -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- ===================================================================== -->
+  <!-- SCREEN 1: LOGIN (Master Password Authentication) -->
+  <!-- ===================================================================== -->
+  <div id="loginScreen" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
+    <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative border border-slate-800">
+      <!-- Glow ambient -->
+      <div class="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 -right-12 w-48 h-48 bg-violet-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center mb-8 relative">
+        <div class="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-indigo-500/25 mb-4">
+          <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">SMM Account Manager</h1>
+        <p class="text-sm text-slate-400 mt-1">Hệ thống Quản lý Tài khoản & Media Tập trung</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-5 relative">
+        <div id="loginErrorMsg" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+          <span id="loginErrorText">Mật khẩu không chính xác.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Master Password</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="key" class="w-4 h-4"></i>
+            </div>
+            <input
+              type="password"
+              id="loginPasswordInput"
+              required
+              placeholder="Nhập Master Password để truy cập..."
+              class="w-full pl-10 pr-11 py-3 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"
+            >
+            <button
+              type="button"
+              onclick="togglePasswordVisibility('loginPasswordInput', this)"
+              class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200"
+            >
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          id="loginBtn"
+          class="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium rounded-xl text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+        >
+          <span id="loginBtnText">Đăng nhập Quản trị</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+
+        <div class="pt-2 text-center">
+          <button
+            type="button"
+            onclick="openSetupModal()"
+            class="text-xs text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-1"
+          >
+            <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+            <span>Cấu hình Spreadsheet & Khóa bảo mật</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN APP CONTAINER (Dashboard) -->
+  <!-- ===================================================================== -->
+  <div id="mainDashboard" class="flex-1 flex flex-col min-h-screen">
+    
+    <!-- Top Navigation -->
+    <header class="glass-panel sticky top-0 z-30 border-b border-slate-800/80">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          
+          <!-- Logo & Brand -->
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
+              <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-base tracking-tight text-white">SMM Manager</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1"></span>
+                  AES Encrypted
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-400 hidden sm:block">Quản lý Tài khoản & Kênh Truyền thông</p>
+            </div>
+          </div>
+
+          <!-- Top Actions -->
+          <div class="flex items-center gap-2.5">
+            <!-- Refresh Button -->
+            <button
+              onclick="loadAppData(true)"
+              title="Đồng bộ dữ liệu từ Google Sheets"
+              class="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl border border-slate-700/60 transition-all flex items-center gap-1.5 text-xs font-medium"
+            >
+              <i id="syncIcon" data-lucide="refresh-cw" class="w-4 h-4"></i>
+              <span class="hidden md:inline">Đồng bộ</span>
+            </button>
+
+            <!-- Staff Management -->
+            <button
+              onclick="openStaffModal()"
+              class="p-2 sm:px-3 text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl border border-slate-700/60 transition-all flex items-center gap-1.5 text-xs font-medium"
+            >
+              <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i>
+              <span class="hidden sm:inline">Nhân sự</span>
+              <span id="badgeStaffCount" class="ml-1 px-1.5 py-0.2 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">0</span>
+            </button>
+
+            <!-- System Settings -->
+            <button
+              onclick="openSetupModal()"
+              title="Cài đặt hệ thống"
+              class="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl border border-slate-700/60 transition-all text-xs"
+            >
+              <i data-lucide="settings" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Logout -->
+            <button
+              onclick="handleLogout()"
+              title="Đăng xuất"
+              class="p-2 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl border border-rose-500/20 transition-all text-xs flex items-center gap-1.5"
+            >
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+              <span class="hidden md:inline">Thoát</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
+
+      <!-- Metrics Row -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Metric 1: Emails -->
+        <div class="glass-card p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Hộp thư Email</p>
+            <h3 id="statTotalEmails" class="text-2xl font-bold text-white mt-1">0</h3>
+            <p id="statActiveEmails" class="text-[11px] text-emerald-400 mt-0.5">0 đang hoạt động</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <i data-lucide="mail" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <!-- Metric 2: Channels -->
+        <div class="glass-card p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Tổng số Kênh</p>
+            <h3 id="statTotalChannels" class="text-2xl font-bold text-white mt-1">0</h3>
+            <p id="statActiveChannels" class="text-[11px] text-indigo-400 mt-0.5">0 Active</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <i data-lucide="share-2" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <!-- Metric 3: Active Rate -->
+        <div class="glass-card p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Tỷ lệ Sức khỏe</p>
+            <h3 id="statHealthRate" class="text-2xl font-bold text-white mt-1">100%</h3>
+            <p id="statIssueCount" class="text-[11px] text-slate-400 mt-0.5">0 kênh có sự cố</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <i data-lucide="activity" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <!-- Metric 4: Staff -->
+        <div class="glass-card p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Nhân sự Phụ trách</p>
+            <h3 id="statTotalStaff" class="text-2xl font-bold text-white mt-1">0</h3>
+            <p class="text-[11px] text-slate-400 mt-0.5">Phân quyền vận hành</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+            <i data-lucide="user-check" class="w-6 h-6"></i>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action & Filter Bar -->
+      <section class="glass-panel p-4 rounded-2xl space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          
+          <!-- Search Box -->
+          <div class="relative flex-1 max-w-md">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="search" class="w-4 h-4"></i>
+            </div>
+            <input
+              type="text"
+              id="searchKeyword"
+              oninput="renderDashboard()"
+              placeholder="Tìm kiếm Email, Kênh, Username, Nhân sự..."
+              class="w-full pl-10 pr-9 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+            >
+            <button
+              id="clearSearchBtn"
+              onclick="document.getElementById('searchKeyword').value = ''; renderDashboard();"
+              class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+            >
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- CTA Buttons -->
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <button
+              onclick="openEmailModal()"
+              class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-2 active:scale-95"
+            >
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Thêm Email</span>
+            </button>
+
+            <button
+              onclick="openChannelModal()"
+              class="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 active:scale-95"
+            >
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>Thêm Kênh</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Pills & Selectors -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
+          
+          <!-- Platform Tabs -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs" id="platformFilterBar">
+            <button onclick="setPlatformFilter('')" class="platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-indigo-600 text-white" data-platform="">Tất cả nền tảng</button>
+            <button onclick="setPlatformFilter('TikTok')" class="platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 hover:bg-slate-700" data-platform="TikTok">TikTok</button>
+            <button onclick="setPlatformFilter('Facebook')" class="platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 hover:bg-slate-700" data-platform="Facebook">Facebook</button>
+            <button onclick="setPlatformFilter('YouTube')" class="platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 hover:bg-slate-700" data-platform="YouTube">YouTube</button>
+            <button onclick="setPlatformFilter('Instagram')" class="platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 hover:bg-slate-700" data-platform="Instagram">Instagram</button>
+            <button onclick="setPlatformFilter('Threads')" class="platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 hover:bg-slate-700" data-platform="Threads">Threads</button>
+            <button onclick="setPlatformFilter('Other')" class="platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 hover:bg-slate-700" data-platform="Other">Khác</button>
+          </div>
+
+          <!-- Secondary Filters (Staff & Status) -->
+          <div class="flex items-center gap-2 text-xs">
+            <!-- Staff Filter -->
+            <select
+              id="filterStaffSelect"
+              onchange="renderDashboard()"
+              class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Tất cả Nhân sự</option>
+            </select>
+
+            <!-- Status Filter -->
+            <select
+              id="filterStatusSelect"
+              onchange="renderDashboard()"
+              class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Mọi trạng thái</option>
+              <option value="ACTIVE">ACTIVE (Hoạt động)</option>
+              <option value="LOCKED">LOCKED (Tạm khóa)</option>
+              <option value="SUSPENDED">SUSPENDED (Đình chỉ)</option>
+              <option value="APPEALING">APPEALING (Đang kháng)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Tree View: Grouped by Email (Parent) -> Channels (Child) -->
+      <section id="treeContainer" class="space-y-4">
+        <!-- Rendered dynamically by JavaScript -->
+      </section>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden glass-panel p-12 rounded-2xl text-center">
+        <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto text-slate-400 mb-4">
+          <i data-lucide="inbox" class="w-8 h-8"></i>
+        </div>
+        <h4 class="text-base font-semibold text-white">Chưa có dữ liệu phù hợp</h4>
+        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Không tìm thấy tài khoản Email hoặc Kênh nào khớp với bộ lọc hiện tại.</p>
+        <button
+          onclick="openEmailModal()"
+          class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-2"
+        >
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Thêm Email đầu tiên</span>
+        </button>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-4 border-t border-slate-800/80 text-center text-xs text-slate-500">
+      <p>SMM Account & Media Manager • Google Apps Script + Google Sheets Database • AES-256 Field Security</p>
+    </footer>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: ADD / EDIT EMAIL -->
+  <!-- ===================================================================== -->
+  <div id="emailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-panel w-full max-w-lg p-6 rounded-2xl border border-slate-800 shadow-2xl relative my-8">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <i data-lucide="mail" class="w-4 h-4"></i>
+          </div>
+          <h3 id="emailModalTitle" class="text-base font-bold text-white">Thêm Hộp Thư Email Mới</h3>
+        </div>
+        <button onclick="closeEmailModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="emailForm" onsubmit="handleEmailFormSubmit(event)" class="space-y-4 pt-4 text-xs">
+        <input type="hidden" id="emailFormId">
+
+        <!-- Email Address -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Địa chỉ Email chính <span class="text-rose-400">*</span></label>
+          <input
+            type="email"
+            id="emailFormAddress"
+            required
+            placeholder="example@gmail.com"
+            class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-sm"
+          >
+        </div>
+
+        <!-- Password with Generator -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="font-medium text-slate-300">Mật khẩu Email</label>
+            <button type="button" onclick="generateStrongPassword('emailFormPassword')" class="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-[11px]">
+              <i data-lucide="sparkles" class="w-3 h-3"></i>
+              <span>Tạo ngẫu nhiên</span>
+            </button>
+          </div>
+          <div class="relative">
+            <input
+              type="text"
+              id="emailFormPassword"
+              placeholder="Nhập mật khẩu (sẽ được mã hóa AES)..."
+              class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-sm font-mono"
+            >
+          </div>
+        </div>
+
+        <!-- Recovery Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Email Khôi phục</label>
+            <input
+              type="email"
+              id="emailFormRecoveryEmail"
+              placeholder="recovery@example.com"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">SĐT Khôi phục</label>
+            <input
+              type="text"
+              id="emailFormRecoveryPhone"
+              placeholder="0987654321"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+          </div>
+        </div>
+
+        <!-- 2FA / Backup Key -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Khóa bảo mật 2FA / Mã dự phòng</label>
+          <input
+            type="text"
+            id="emailFormTwoFa"
+            placeholder="Khóa 2FA secret key hoặc mã 8-digit backup codes..."
+            class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs font-mono"
+          >
+        </div>
+
+        <!-- Staff & Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Nhân sự Phụ trách</label>
+            <select
+              id="emailFormStaff"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+              <option value="">-- Chọn nhân sự --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Trạng thái</label>
+            <select
+              id="emailFormStatus"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+              <option value="ACTIVE">ACTIVE (Đang hoạt động)</option>
+              <option value="LOCKED">LOCKED (Tạm khóa)</option>
+              <option value="DISABLED">DISABLED (Đã vô hiệu hóa)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Ghi chú (Thiết bị đăng nhập, vị trí sim...)</label>
+          <textarea
+            id="emailFormNotes"
+            rows="2"
+            placeholder="Ví dụ: Sim gắn máy iPhone 11 Marketing, thường xuyên nhận OTP..."
+            class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+          ></textarea>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button
+            type="button"
+            onclick="closeEmailModal()"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-all"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            id="saveEmailBtn"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
+          >
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Lưu Hộp Thư</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: ADD / EDIT SOCIAL CHANNEL -->
+  <!-- ===================================================================== -->
+  <div id="channelModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-panel w-full max-w-lg p-6 rounded-2xl border border-slate-800 shadow-2xl relative my-8">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <i data-lucide="share-2" class="w-4 h-4"></i>
+          </div>
+          <h3 id="channelModalTitle" class="text-base font-bold text-white">Thêm Kênh Mạng Xã Hội</h3>
+        </div>
+        <button onclick="closeChannelModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="channelForm" onsubmit="handleChannelFormSubmit(event)" class="space-y-4 pt-4 text-xs">
+        <input type="hidden" id="channelFormId">
+
+        <!-- Parent Email & Platform -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Hộp thư Email gốc (Parent) <span class="text-rose-400">*</span></label>
+            <select
+              id="channelFormEmailId"
+              required
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+              <option value="">-- Chọn Email cha --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Nền tảng <span class="text-rose-400">*</span></label>
+            <select
+              id="channelFormPlatform"
+              required
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+              <option value="TikTok">TikTok</option>
+              <option value="Facebook">Facebook Page / Profile</option>
+              <option value="YouTube">YouTube</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Threads">Threads</option>
+              <option value="X/Twitter">X / Twitter</option>
+              <option value="Other">Khác</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Channel Name & URL -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Tên Kênh / Trang <span class="text-rose-400">*</span></label>
+          <input
+            type="text"
+            id="channelFormName"
+            required
+            placeholder="Ví dụ: TikTok Kênh Review Công Nghệ"
+            class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-sm"
+          >
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Đường dẫn trực tiếp (URL)</label>
+          <input
+            type="url"
+            id="channelFormUrl"
+            placeholder="https://www.tiktok.com/@kenh_review"
+            class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+          >
+        </div>
+
+        <!-- Login Username & Password -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">ID / Username đăng nhập</label>
+            <input
+              type="text"
+              id="channelFormUsername"
+              placeholder="Username đăng nhập riêng (nếu có)"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="font-medium text-slate-300">Mật khẩu riêng</label>
+              <button type="button" onclick="generateStrongPassword('channelFormPassword')" class="text-indigo-400 hover:text-indigo-300 text-[10px]">Tạo mk</button>
+            </div>
+            <input
+              type="text"
+              id="channelFormPassword"
+              placeholder="Bỏ trống nếu trùng MK Email"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs font-mono"
+            >
+          </div>
+        </div>
+
+        <!-- Staff & Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Nhân sự Vận hành Kênh</label>
+            <select
+              id="channelFormStaff"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+              <option value="">-- Mặc định theo Email --</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Trạng thái Kênh</label>
+            <select
+              id="channelFormStatus"
+              class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+            >
+              <option value="ACTIVE">ACTIVE (Bình thường)</option>
+              <option value="SUSPENDED">SUSPENDED (Bị đình chỉ / Khóa)</option>
+              <option value="APPEALING">APPEALING (Đang kháng nghị)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Ghi chú (Ngách nội dung, gậy bản quyền...)</label>
+          <textarea
+            id="channelFormNotes"
+            rows="2"
+            placeholder="Ví dụ: Kênh xây dựng ngách công nghệ, đang dính 1 gậy cộng đồng..."
+            class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-xs"
+          ></textarea>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button
+            type="button"
+            onclick="closeChannelModal()"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-all"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            id="saveChannelBtn"
+            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2"
+          >
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Lưu Kênh</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: STAFF MANAGEMENT -->
+  <!-- ===================================================================== -->
+  <div id="staffModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-panel w-full max-w-2xl p-6 rounded-2xl border border-slate-800 shadow-2xl relative my-8">
+      
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <i data-lucide="users" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Quản lý Danh mục Nhân sự</h3>
+            <p class="text-[11px] text-slate-400">Phân quyền nhân sự phụ trách hộp thư và kênh mạng xã hội</p>
+          </div>
+        </div>
+        <button onclick="closeStaffModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Add Staff Form -->
+      <form id="staffForm" onsubmit="handleStaffFormSubmit(event)" class="mt-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3 text-xs">
+        <input type="hidden" id="staffFormId">
+        <div class="font-semibold text-slate-200 flex items-center gap-1.5" id="staffFormHeading">
+          <i data-lucide="user-plus" class="w-4 h-4 text-indigo-400"></i>
+          <span>Thêm Nhân sự Mới</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Họ và tên <span class="text-rose-400">*</span></label>
+            <input
+              type="text"
+              id="staffFormName"
+              required
+              placeholder="Nguyễn Văn A"
+              class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs"
+            >
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Phòng ban / Đội nhóm</label>
+            <input
+              type="text"
+              id="staffFormDept"
+              placeholder="Marketing, Media, Ads..."
+              class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs"
+            >
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">SĐT / Zalo / Telegram</label>
+            <input
+              type="text"
+              id="staffFormPhone"
+              placeholder="0912345678"
+              class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs"
+            >
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <div class="flex items-center gap-2">
+            <label class="text-slate-400">Trạng thái:</label>
+            <select id="staffFormStatus" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs">
+              <option value="ACTIVE">ACTIVE (Đang làm)</option>
+              <option value="RESIGNED">RESIGNED (Đã nghỉ việc)</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="cancelEditStaffBtn"
+              onclick="resetStaffForm()"
+              class="hidden px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs"
+            >
+              Hủy sửa
+            </button>
+            <button
+              type="submit"
+              id="saveStaffBtn"
+              class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
+            >
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span id="saveStaffBtnText">Thêm nhân sự</span>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Staff List Table -->
+      <div class="mt-4 overflow-x-auto max-h-72 overflow-y-auto border border-slate-800 rounded-xl">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900 text-slate-400 uppercase text-[10px] font-semibold sticky top-0">
+            <tr>
+              <th class="px-3 py-2.5">Mã NV</th>
+              <th class="px-3 py-2.5">Họ tên</th>
+              <th class="px-3 py-2.5">Phòng ban</th>
+              <th class="px-3 py-2.5">Liên hệ</th>
+              <th class="px-3 py-2.5">Trạng thái</th>
+              <th class="px-3 py-2.5 text-right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="staffTableBody" class="divide-y divide-slate-800/80 bg-slate-950/40">
+            <!-- Staff rows rendered here -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: SYSTEM SETUP (First time or Re-config) -->
+  <!-- ===================================================================== -->
+  <div id="setupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-panel w-full max-w-lg p-6 rounded-2xl border border-slate-800 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Cấu hình Hệ thống & Bảo mật</h3>
+            <p class="text-[11px] text-slate-400">Thiết lập Google Sheets ID & Khóa mã hóa AES</p>
+          </div>
+        </div>
+        <button onclick="closeSetupModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="setupForm" onsubmit="handleSetupFormSubmit(event)" class="space-y-4 pt-4 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">
+            Google Apps Script Web App API URL (Dành cho GitHub Pages)
+          </label>
+          <input
+            type="url"
+            id="setupApiUrl"
+            placeholder="https://script.google.com/macros/s/.../exec"
+            class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+          >
+          <p class="text-[11px] text-slate-400 mt-1">Dán link Web App deployment vào đây khi chạy trên GitHub Pages.</p>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">
+            Google Sheets ID (<code class="text-indigo-400">SPREADSHEET_ID</code>) <span class="text-rose-400">*</span>
+          </label>
+          <input
+            type="text"
+            id="setupSpreadsheetId"
+            required
+            placeholder="Dán ID từ URL của Google Sheets (ví dụ: 1SUx1fYhkQ...)"
+            class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+          >
+          <p class="text-[11px] text-slate-400 mt-1">Lấy từ liên kết: https://docs.google.com/spreadsheets/d/<strong>{ID_NẰM_Ở_ĐÂY}</strong>/edit</p>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">
+            Mật khẩu Đăng nhập Web UI (<code class="text-indigo-400">APP_MASTER_PASSWORD</code>) <span class="text-rose-400">*</span>
+          </label>
+          <input
+            type="password"
+            id="setupMasterPassword"
+            required
+            placeholder="Thiết lập mật khẩu quản trị..."
+            class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500"
+          >
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="font-medium text-slate-300">
+              Khóa Mã Hóa Bí Mật (<code class="text-indigo-400">ENCRYPTION_SECRET_KEY</code>) <span class="text-rose-400">*</span>
+            </label>
+            <button type="button" onclick="generateRandomKey('setupEncryptionKey')" class="text-indigo-400 hover:text-indigo-300 text-[11px]">
+              Sinh chuỗi ngẫu nhiên
+            </button>
+          </div>
+          <input
+            type="text"
+            id="setupEncryptionKey"
+            required
+            placeholder="Chuỗi khóa AES-256 (tối thiểu 16 ký tự)..."
+            class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+          >
+          <p class="text-[11px] text-amber-400/90 mt-1">⚠️ Cực kỳ quan trọng: Lưu lại khóa này cẩn thận. Mất khóa này sẽ không giải mã được mật khẩu trong Sheets!</p>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button
+            type="button"
+            onclick="closeSetupModal()"
+            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
+          >
+            Đóng
+          </button>
+          <button
+            type="submit"
+            id="saveSetupBtn"
+            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/30 flex items-center gap-2"
+          >
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Lưu & Khởi tạo Sheet</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: CONFIRM DELETE -->
+  <!-- ===================================================================== -->
+  <div id="deleteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-panel w-full max-w-sm p-6 rounded-2xl border border-slate-800 shadow-2xl text-center">
+      <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-3 border border-rose-500/20">
+        <i data-lucide="trash-2" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-white">Xác nhận xóa bản ghi</h3>
+      <p id="deleteModalMessage" class="text-xs text-slate-400 mt-2">Bạn có chắc chắn muốn xóa bản ghi này? Thao tác này sẽ xóa vĩnh viễn trên Google Sheets.</p>
+      
+      <div class="flex items-center justify-center gap-3 mt-6">
+        <button
+          onclick="closeDeleteModal()"
+          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium"
+        >
+          Hủy bỏ
+        </button>
+        <button
+          id="confirmDeleteBtn"
+          onclick="executeConfirmedDelete()"
+          class="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-600/30"
+        >
+          Xóa vĩnh viễn
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT APPLICATION CORE -->
+  <!-- ===================================================================== -->
+  <script>
+    // --- Application State ---
+    let appState = {
+      isAuthenticated: false,
+      token: '',
+      isConfigured: false,
+      staff: [],
+      emails: [],
+      channels: [],
+      filters: {
+        keyword: '',
+        platform: '',
+        staffId: '',
+        status: ''
+      },
+      expandedEmails: new Set(),
+      pendingDelete: null // { type: 'email' | 'channel' | 'staff', id: string, name: string }
+    };
+
+    // Platform Visual Configs
+    const PLATFORM_CONFIG = {
+      'TikTok': {
+        name: 'TikTok',
+        icon: 'video',
+        bgColor: 'bg-black',
+        textColor: 'text-pink-400',
+        borderColor: 'border-pink-500/30',
+        badge: 'bg-pink-500/10 text-pink-400 border-pink-500/20'
+      },
+      'Facebook': {
+        name: 'Facebook',
+        icon: 'facebook',
+        bgColor: 'bg-blue-900/30',
+        textColor: 'text-blue-400',
+        borderColor: 'border-blue-500/30',
+        badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+      },
+      'YouTube': {
+        name: 'YouTube',
+        icon: 'youtube',
+        bgColor: 'bg-red-900/30',
+        textColor: 'text-red-400',
+        borderColor: 'border-red-500/30',
+        badge: 'bg-red-500/10 text-red-400 border-red-500/20'
+      },
+      'Instagram': {
+        name: 'Instagram',
+        icon: 'instagram',
+        bgColor: 'bg-purple-900/30',
+        textColor: 'text-pink-400',
+        borderColor: 'border-pink-500/30',
+        badge: 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border-pink-500/20'
+      },
+      'Threads': {
+        name: 'Threads',
+        icon: 'at-sign',
+        bgColor: 'bg-slate-900',
+        textColor: 'text-slate-300',
+        borderColor: 'border-slate-700',
+        badge: 'bg-slate-800 text-slate-300 border-slate-700'
+      },
+      'X/Twitter': {
+        name: 'X',
+        icon: 'twitter',
+        bgColor: 'bg-slate-900',
+        textColor: 'text-sky-400',
+        borderColor: 'border-sky-500/30',
+        badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+      },
+      'Other': {
+        name: 'Khác',
+        icon: 'globe',
+        bgColor: 'bg-slate-800',
+        textColor: 'text-slate-300',
+        borderColor: 'border-slate-700',
+        badge: 'bg-slate-800 text-slate-400 border-slate-700'
+      }
+    };
+
+    // --- Life-Cycle Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      checkAuthSession();
+    });
+
+    function checkAuthSession() {
+      const savedToken = sessionStorage.getItem('smm_auth_token');
+      if (savedToken) {
+        appState.isAuthenticated = true;
+        appState.token = savedToken;
+        document.getElementById('loginScreen').classList.add('hidden');
+        loadAppData();
+      } else {
+        document.getElementById('loginScreen').classList.remove('hidden');
+      }
+    }
+
+    // --- Gmail-style Server Connection Loading Indicator ---
+    let activeServerRequests = 0;
+    let hideLoadingPillTimeout = null;
+
+    function getMethodLoadingLabel(methodName) {
+      switch (methodName) {
+        case 'getInitialData':
+          return 'Đang tải dữ liệu từ Google Sheets...';
+        case 'login':
+          return 'Đang xác thực thông tin...';
+        case 'saveEmail':
+          return 'Đang mã hóa & lưu Email vào Sheets...';
+        case 'saveChannel':
+          return 'Đang mã hóa & lưu Kênh vào Sheets...';
+        case 'saveStaff':
+          return 'Đang lưu danh mục nhân sự...';
+        case 'deleteItem':
+          return 'Đang đồng bộ xóa trên Sheets...';
+        case 'saveSystemSetup':
+          return 'Đang thiết lập cấu hình & tạo tab...';
+        default:
+          return 'Đang kết nối máy chủ Google...';
+      }
+    }
+
+    function showGmailLoading(text) {
+      activeServerRequests++;
+      if (hideLoadingPillTimeout) {
+        clearTimeout(hideLoadingPillTimeout);
+        hideLoadingPillTimeout = null;
+      }
+
+      const bar = document.getElementById('gmailLoadingBar');
+      const pill = document.getElementById('gmailStatusPill');
+      const textEl = document.getElementById('gmailStatusText');
+      const content = document.getElementById('gmailStatusContent');
+      const spinner = document.getElementById('gmailStatusSpinner');
+
+      if (bar) bar.classList.add('active');
+      if (textEl && text) textEl.textContent = text;
+      if (spinner) {
+        spinner.className = 'w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin';
+        spinner.innerHTML = '';
+      }
+      if (content) {
+        content.className = 'px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-2.5 text-xs font-semibold border backdrop-blur-xl bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-amber-500/10 transition-all';
+      }
+      if (pill) pill.classList.add('active');
+    }
+
+    function hideGmailLoading(success = true, completionText = 'Đã hoàn tất') {
+      activeServerRequests = Math.max(0, activeServerRequests - 1);
+      if (activeServerRequests === 0) {
+        const bar = document.getElementById('gmailLoadingBar');
+        const pill = document.getElementById('gmailStatusPill');
+        const textEl = document.getElementById('gmailStatusText');
+        const content = document.getElementById('gmailStatusContent');
+        const spinner = document.getElementById('gmailStatusSpinner');
+
+        if (bar) bar.classList.remove('active');
+
+        if (success) {
+          if (textEl) textEl.textContent = completionText;
+          if (spinner) {
+            spinner.className = 'w-3.5 h-3.5 text-emerald-400 flex items-center justify-center';
+            spinner.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
+          }
+          if (content) {
+            content.className = 'px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-2 text-xs font-semibold border backdrop-blur-xl bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-emerald-500/10 transition-all';
+          }
+        } else {
+          if (textEl) textEl.textContent = 'Lỗi kết nối máy chủ';
+          if (spinner) {
+            spinner.className = 'w-3.5 h-3.5 text-rose-400 flex items-center justify-center';
+            spinner.innerHTML = '<i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>';
+          }
+          if (content) {
+            content.className = 'px-4 py-1.5 rounded-full shadow-2xl flex items-center gap-2 text-xs font-semibold border backdrop-blur-xl bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-rose-500/10 transition-all';
+          }
+        }
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        hideLoadingPillTimeout = setTimeout(() => {
+          if (pill) pill.classList.remove('active');
+        }, 1200);
+      }
+    }
+
+    // --- Backend API Configuration ---
+    const DEFAULT_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxCrGW3huEVu6rrCC3VUAMfj9q8n05C_9KdWUED5XYJJK23Bsyud_7bX1RFNx_ce5o/exec';
+
+    function getApiUrl() {
+      return localStorage.getItem('smm_api_url') || DEFAULT_GAS_API_URL;
+    }
+
+    // --- Backend API Wrapper with Fallback Support for Testing ---
+    function callBackend(methodName, args = []) {
+      const loadingLabel = getMethodLoadingLabel(methodName);
+      showGmailLoading(loadingLabel);
+
+      return new Promise((resolve, reject) => {
+        // 1. Chạy trực tiếp trong môi trường Google Apps Script container
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              const isOk = res && res.success !== false;
+              hideGmailLoading(isOk, isOk ? 'Đã hoàn tất' : (res && res.error ? 'Có lỗi' : 'Xử lý xong'));
+              resolve(res);
+            })
+            .withFailureHandler((err) => {
+              hideGmailLoading(false, 'Lỗi kết nối máy chủ');
+              reject(err);
+            })[methodName](...args);
+        } else {
+          // 2. Chạy trên GitHub Pages hoặc domain ngoài qua HTTP POST API
+          const apiUrl = getApiUrl();
+          if (apiUrl && !apiUrl.includes('your-deployment-id')) {
+            fetch(apiUrl, {
+              method: 'POST',
+              body: JSON.stringify({ action: methodName, args })
+            })
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+              })
+              .then((res) => {
+                const isOk = res && res.success !== false;
+                hideGmailLoading(isOk, isOk ? 'Đã hoàn tất' : (res && res.error ? 'Có lỗi' : 'Xử lý xong'));
+                resolve(res);
+              })
+              .catch((err) => {
+                console.error('Fetch API error:', err);
+                hideGmailLoading(false, 'Lỗi kết nối máy chủ');
+                reject(err);
+              });
+          } else {
+            console.warn(`[Local Dev Mock Mode] Calling ${methodName} with:`, args);
+            // Mock data fallback
+            setTimeout(() => {
+              hideGmailLoading(true, 'Đã tải xong (Mock)');
+              if (methodName === 'login') {
+                resolve({ success: true, data: { token: 'mock-token', username: 'Admin' } });
+              } else if (methodName === 'getInitialData') {
+                resolve({
+                  success: true,
+                  data: {
+                    isConfigured: true,
+                    staff: [
+                      { staff_id: 'ST001', full_name: 'Nguyễn Văn Hoàng', department: 'Media', phone: '0912345678', status: 'ACTIVE' },
+                      { staff_id: 'ST002', full_name: 'Trần Thị Thu Thảo', department: 'Marketing', phone: '0987654321', status: 'ACTIVE' }
+                    ],
+                    emails: [
+                      {
+                        email_id: 'EM001',
+                        email_address: 'creator.media01@gmail.com',
+                        password_enc: 'enc::xxx',
+                        password_plain: 'P@ssw0rdMedia2026',
+                        recovery_email: 'backup.hoang@gmail.com',
+                        recovery_phone: '0912345678',
+                        two_factor_enc: 'enc::2fa',
+                        two_factor_plain: 'JBSWY3DPEHPK3PXP',
+                        assigned_staff_id: 'ST001',
+                        status: 'ACTIVE',
+                        notes: 'Điện thoại iPhone 12 Pro Max của Hoàng'
+                      }
+                    ],
+                    channels: [
+                      {
+                        channel_id: 'CH001',
+                        email_id: 'EM001',
+                        platform: 'TikTok',
+                        channel_name: 'Góc Review Công Nghệ',
+                        channel_url: 'https://tiktok.com/@goc_review_tech',
+                        login_username: 'goc_review_tech',
+                        password_enc: 'enc::xxx',
+                        password_plain: 'TikTokSecret#2026',
+                        assigned_staff_id: 'ST001',
+                        status: 'ACTIVE',
+                        notes: '150k followers'
+                      }
+                    ]
+                  }
+                });
+              } else {
+                resolve({ success: true, message: 'Thành công (Mock Dev)' });
+              }
+            }, 350);
+          }
+        }
+      });
+    }
+
+    // --- Authentication ---
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const pwdInput = document.getElementById('loginPasswordInput');
+      const errorDiv = document.getElementById('loginErrorMsg');
+      const errorText = document.getElementById('loginErrorText');
+      const submitBtn = document.getElementById('loginBtn');
+      const submitText = document.getElementById('loginBtnText');
+
+      const password = pwdInput.value;
+      if (!password) return;
+
+      submitBtn.disabled = true;
+      submitText.textContent = 'Đang xác thực...';
+      errorDiv.classList.add('hidden');
+
+      try {
+        const res = await callBackend('login', [password]);
+        if (res.success && res.data) {
+          appState.isAuthenticated = true;
+          appState.token = res.data.token;
+          sessionStorage.setItem('smm_auth_token', res.data.token);
+          document.getElementById('loginScreen').classList.add('hidden');
+          showToast('Đăng nhập thành công!', 'success');
+          loadAppData();
+        } else {
+          errorText.textContent = res.error || 'Mật khẩu quản trị không chính xác!';
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorText.textContent = 'Lỗi kết nối máy chủ: ' + (err.message || String(err));
+        errorDiv.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitText.textContent = 'Đăng nhập Quản trị';
+      }
+    }
+
+    function handleLogout() {
+      sessionStorage.removeItem('smm_auth_token');
+      appState.isAuthenticated = false;
+      appState.token = '';
+      document.getElementById('loginPasswordInput').value = '';
+      document.getElementById('loginScreen').classList.remove('hidden');
+      showToast('Đã đăng xuất an toàn.', 'info');
+    }
+
+    // --- Data Loading & Synchronization ---
+    async function loadAppData(isManual = false) {
+      const syncIcon = document.getElementById('syncIcon');
+      if (syncIcon) syncIcon.classList.add('animate-spin');
+
+      try {
+        const res = await callBackend('getInitialData', []);
+        if (res.success && res.data) {
+          appState.isConfigured = res.data.isConfigured;
+          appState.staff = res.data.staff || [];
+          appState.emails = res.data.emails || [];
+          appState.channels = res.data.channels || [];
+
+          // Expand all emails by default on initial load
+          if (appState.expandedEmails.size === 0) {
+            appState.emails.forEach(e => appState.expandedEmails.add(e.email_id));
+          }
+
+          populateStaffDropdowns();
+          populateEmailDropdown();
+          updateMetrics();
+          renderDashboard();
+
+          if (isManual) {
+            showToast('Đã đồng bộ dữ liệu mới nhất!', 'success');
+          }
+        } else {
+          showToast(res.error || 'Không thể nạp dữ liệu', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi tải dữ liệu: ' + (err.message || String(err)), 'error');
+      } finally {
+        if (syncIcon) syncIcon.classList.remove('animate-spin');
+      }
+    }
+
+    // --- Metrics Calculation ---
+    function updateMetrics() {
+      const totalEmails = appState.emails.length;
+      const activeEmails = appState.emails.filter(e => e.status === 'ACTIVE').length;
+      const totalChannels = appState.channels.length;
+      const activeChannels = appState.channels.filter(c => c.status === 'ACTIVE').length;
+      const totalStaff = appState.staff.length;
+      const issueChannels = appState.channels.filter(c => c.status === 'SUSPENDED' || c.status === 'LOCKED').length;
+
+      document.getElementById('statTotalEmails').textContent = totalEmails;
+      document.getElementById('statActiveEmails').textContent = `${activeEmails} đang hoạt động`;
+      document.getElementById('statTotalChannels').textContent = totalChannels;
+      document.getElementById('statActiveChannels').textContent = `${activeChannels} Active`;
+      document.getElementById('statTotalStaff').textContent = totalStaff;
+      document.getElementById('badgeStaffCount').textContent = totalStaff;
+
+      const healthRate = totalChannels > 0 ? Math.round((activeChannels / totalChannels) * 100) : 100;
+      document.getElementById('statHealthRate').textContent = `${healthRate}%`;
+      document.getElementById('statIssueCount').textContent = `${issueChannels} kênh có sự cố`;
+    }
+
+    // --- Dropdowns Helper ---
+    function populateStaffDropdowns() {
+      const options = ['<option value="">-- Chọn nhân sự --</option>'];
+      const filterOptions = ['<option value="">Tất cả Nhân sự</option>'];
+
+      appState.staff.forEach(s => {
+        const label = `${s.full_name} (${s.department || 'Staff'})`;
+        options.push(`<option value="${escapeHtml(s.staff_id)}">${escapeHtml(label)}</option>`);
+        filterOptions.push(`<option value="${escapeHtml(s.staff_id)}">${escapeHtml(s.full_name)}</option>`);
+      });
+
+      const emailFormStaff = document.getElementById('emailFormStaff');
+      const channelFormStaff = document.getElementById('channelFormStaff');
+      const filterStaffSelect = document.getElementById('filterStaffSelect');
+
+      if (emailFormStaff) emailFormStaff.innerHTML = options.join('');
+      if (channelFormStaff) channelFormStaff.innerHTML = '<option value="">-- Mặc định theo Email --</option>' + options.slice(1).join('');
+      if (filterStaffSelect) filterStaffSelect.innerHTML = filterOptions.join('');
+    }
+
+    function populateEmailDropdown() {
+      const options = ['<option value="">-- Chọn Email cha --</option>'];
+      appState.emails.forEach(e => {
+        options.push(`<option value="${escapeHtml(e.email_id)}">${escapeHtml(e.email_address)} (${escapeHtml(e.email_id)})</option>`);
+      });
+      const channelFormEmailId = document.getElementById('channelFormEmailId');
+      if (channelFormEmailId) channelFormEmailId.innerHTML = options.join('');
+    }
+
+    // --- Filter Handlers ---
+    function setPlatformFilter(platform) {
+      appState.filters.platform = platform;
+      document.querySelectorAll('.platform-tab').forEach(tab => {
+        if (tab.dataset.platform === platform) {
+          tab.className = 'platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-indigo-600 text-white';
+        } else {
+          tab.className = 'platform-tab px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 hover:bg-slate-700';
+        }
+      });
+      renderDashboard();
+    }
+
+    // --- Main Rendering Engine (Hierarchical Tree View) ---
+    function renderDashboard() {
+      const keyword = (document.getElementById('searchKeyword').value || '').trim().toLowerCase();
+      const platformFilter = appState.filters.platform;
+      const staffFilter = document.getElementById('filterStaffSelect').value;
+      const statusFilter = document.getElementById('filterStatusSelect').value;
+
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) {
+        clearBtn.classList.toggle('hidden', !keyword);
+      }
+
+      const staffMap = {};
+      appState.staff.forEach(s => { staffMap[s.staff_id] = s; });
+
+      // Build Email to Channels Map
+      const emailChannelMap = {};
+      const unassignedChannels = [];
+
+      appState.channels.forEach(ch => {
+        const parentKey = ch.email_id;
+        if (parentKey && appState.emails.some(e => e.email_id === parentKey || e.email_address === parentKey)) {
+          if (!emailChannelMap[parentKey]) emailChannelMap[parentKey] = [];
+          emailChannelMap[parentKey].push(ch);
+        } else {
+          unassignedChannels.push(ch);
+        }
+      });
+
+      // Filter Logic
+      const filteredEmails = appState.emails.filter(email => {
+        const emailStaff = staffMap[email.assigned_staff_id];
+        const staffName = emailStaff ? emailStaff.full_name.toLowerCase() : '';
+        const childChannels = emailChannelMap[email.email_id] || emailChannelMap[email.email_address] || [];
+
+        // Check if email itself or any of its child channels match filters
+        const emailSelfMatch = (
+          (!keyword || email.email_address.toLowerCase().includes(keyword) || (email.notes && email.notes.toLowerCase().includes(keyword)) || staffName.includes(keyword)) &&
+          (!staffFilter || email.assigned_staff_id === staffFilter) &&
+          (!statusFilter || email.status === statusFilter)
+        );
+
+        const channelMatch = childChannels.some(ch => {
+          const chStaff = staffMap[ch.assigned_staff_id];
+          const chStaffName = chStaff ? chStaff.full_name.toLowerCase() : '';
+          return (
+            (!keyword || ch.channel_name.toLowerCase().includes(keyword) || ch.login_username.toLowerCase().includes(keyword) || chStaffName.includes(keyword)) &&
+            (!platformFilter || ch.platform === platformFilter) &&
+            (!staffFilter || ch.assigned_staff_id === staffFilter || email.assigned_staff_id === staffFilter) &&
+            (!statusFilter || ch.status === statusFilter)
+          );
+        });
+
+        if (platformFilter) {
+          // If platform filter is active, only show email if it contains matching channels
+          return channelMatch;
+        }
+
+        return emailSelfMatch || channelMatch;
+      });
+
+      const container = document.getElementById('treeContainer');
+      const emptyState = document.getElementById('emptyState');
+
+      if (filteredEmails.length === 0 && unassignedChannels.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      let html = '';
+
+      filteredEmails.forEach(email => {
+        const childChannels = (emailChannelMap[email.email_id] || emailChannelMap[email.email_address] || []).filter(ch => {
+          if (platformFilter && ch.platform !== platformFilter) return false;
+          if (statusFilter && ch.status !== statusFilter) return false;
+          if (staffFilter && ch.assigned_staff_id !== staffFilter && email.assigned_staff_id !== staffFilter) return false;
+          if (keyword) {
+            const chStaff = staffMap[ch.assigned_staff_id];
+            const chStaffName = chStaff ? chStaff.full_name.toLowerCase() : '';
+            const matchKw = ch.channel_name.toLowerCase().includes(keyword) ||
+                            ch.login_username.toLowerCase().includes(keyword) ||
+                            chStaffName.includes(keyword) ||
+                            email.email_address.toLowerCase().includes(keyword);
+            if (!matchKw) return false;
+          }
+          return true;
+        });
+
+        const isExpanded = appState.expandedEmails.has(email.email_id);
+        const assignedStaff = staffMap[email.assigned_staff_id];
+        const statusBadge = getStatusBadge(email.status);
+
+        html += `
+          <div class="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden transition-all hover:border-slate-700/80 shadow-lg">
+            
+            <!-- Email (Parent) Header Bar -->
+            <div class="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60">
+              
+              <div class="flex items-start sm:items-center gap-3">
+                <!-- Toggle Accordion Button -->
+                <button
+                  onclick="toggleEmailExpand('${escapeHtml(email.email_id)}')"
+                  class="mt-0.5 sm:mt-0 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all flex items-center justify-center flex-shrink-0"
+                  title="${isExpanded ? 'Thu gọn danh sách kênh' : 'Mở rộng danh sách kênh'}"
+                >
+                  <i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Mail Icon & Address -->
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-bold text-white text-base tracking-tight">${escapeHtml(email.email_address)}</span>
+                    ${statusBadge}
+                    <span class="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 text-xs font-semibold border border-indigo-500/20">
+                      ${childChannels.length} kênh
+                    </span>
+                  </div>
+
+                  <!-- Metadata Pills: Recovery Info & Staff -->
+                  <div class="flex items-center gap-3 flex-wrap text-xs text-slate-400">
+                    ${assignedStaff ? `
+                      <span class="flex items-center gap-1 text-slate-300" title="Nhân sự phụ trách: ${escapeHtml(assignedStaff.full_name)} (${escapeHtml(assignedStaff.department)})">
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span>${escapeHtml(assignedStaff.full_name)}</span>
+                      </span>
+                    ` : `
+                      <span class="text-slate-500 italic">Chưa gán nhân sự</span>
+                    `}
+
+                    ${email.recovery_email ? `
+                      <span class="flex items-center gap-1" title="Email khôi phục: ${escapeHtml(email.recovery_email)}">
+                        <i data-lucide="mail-check" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <span>${escapeHtml(email.recovery_email)}</span>
+                      </span>
+                    ` : ''}
+
+                    ${email.recovery_phone ? `
+                      <span class="flex items-center gap-1" title="SĐT khôi phục: ${escapeHtml(email.recovery_phone)}">
+                        <i data-lucide="phone" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <span>${escapeHtml(email.recovery_phone)}</span>
+                      </span>
+                    ` : ''}
+
+                    ${email.notes ? `
+                      <span class="flex items-center gap-1 text-amber-400/80" title="${escapeHtml(email.notes)}">
+                        <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                        <span class="truncate max-w-xs">${escapeHtml(email.notes)}</span>
+                      </span>
+                    ` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Password & Security Controls & Actions -->
+              <div class="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+                
+                <!-- Password Field Masked / Copy -->
+                <div class="flex items-center bg-slate-950/70 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs font-mono">
+                  <span class="text-slate-500 mr-2 text-[10px] uppercase font-sans">MK:</span>
+                  <span id="pass_email_${email.email_id}" class="text-slate-300 select-all tracking-wider">••••••••</span>
+                  
+                  <button
+                    onclick="togglePasswordDisplay('pass_email_${email.email_id}', '${escapeJs(email.password_plain || '')}', this)"
+                    class="ml-2 p-1 text-slate-400 hover:text-white rounded"
+                    title="Hiện / Ẩn mật khẩu"
+                  >
+                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                  </button>
+
+                  <button
+                    onclick="copyToClipboard('${escapeJs(email.password_plain || '')}', 'Đã sao chép mật khẩu Email!')"
+                    class="p-1 text-slate-400 hover:text-indigo-400 rounded"
+                    title="Sao chép mật khẩu"
+                  >
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+
+                <!-- 2FA Backup Code (if available) -->
+                ${email.two_factor_plain ? `
+                  <div class="flex items-center bg-slate-950/70 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs font-mono">
+                    <span class="text-slate-500 mr-2 text-[10px] uppercase font-sans">2FA:</span>
+                    <span id="twofa_email_${email.email_id}" class="text-slate-300 select-all tracking-wider">••••••••</span>
+                    
+                    <button
+                      onclick="togglePasswordDisplay('twofa_email_${email.email_id}', '${escapeJs(email.two_factor_plain || '')}', this)"
+                      class="ml-2 p-1 text-slate-400 hover:text-white rounded"
+                      title="Hiện / Ẩn 2FA"
+                    >
+                      <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                    </button>
+
+                    <button
+                      onclick="copyToClipboard('${escapeJs(email.two_factor_plain || '')}', 'Đã sao chép mã 2FA!')"
+                      class="p-1 text-slate-400 hover:text-indigo-400 rounded"
+                      title="Sao chép 2FA"
+                    >
+                      <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                ` : ''}
+
+                <!-- Add Channel to this Email -->
+                <button
+                  onclick="openChannelModalForEmail('${escapeHtml(email.email_id)}')"
+                  class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-medium transition-all flex items-center gap-1"
+                  title="Thêm Kênh vào Email này"
+                >
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span class="hidden sm:inline">Kênh</span>
+                </button>
+
+                <!-- Edit Email -->
+                <button
+                  onclick="openEditEmailModal('${escapeHtml(email.email_id)}')"
+                  class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                  title="Sửa Email"
+                >
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Delete Email -->
+                <button
+                  onclick="promptDelete('email', '${escapeHtml(email.email_id)}', '${escapeHtml(email.email_address)}')"
+                  class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
+                  title="Xóa Email"
+                >
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+
+              </div>
+            </div>
+
+            <!-- Child Channels Accordion Panel -->
+            ${isExpanded ? `
+              <div class="p-4 sm:p-5 border-t border-slate-800/80 bg-slate-950/40">
+                ${childChannels.length === 0 ? `
+                  <div class="text-center py-4 text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4"></i>
+                    <span>Chưa có kênh mạng xã hội nào gắn với email này.</span>
+                    <button
+                      onclick="openChannelModalForEmail('${escapeHtml(email.email_id)}')"
+                      class="text-indigo-400 hover:underline font-semibold ml-1"
+                    >
+                      + Thêm ngay
+                    </button>
+                  </div>
+                ` : `
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    ${childChannels.map(ch => renderChannelCard(ch, email, staffMap)).join('')}
+                  </div>
+                `}
+              </div>
+            ` : ''}
+
+          </div>
+        `;
+      });
+
+      // Render Unassigned Channels (if any)
+      if (unassignedChannels.length > 0 && !keyword && !platformFilter) {
+        html += `
+          <div class="glass-panel rounded-2xl border border-amber-500/30 overflow-hidden shadow-lg mt-8">
+            <div class="p-4 bg-amber-500/10 flex items-center justify-between border-b border-amber-500/20">
+              <div class="flex items-center gap-2">
+                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400"></i>
+                <h4 class="font-bold text-amber-300 text-sm">Kênh độc lập / Chưa gán Email gốc (${unassignedChannels.length})</h4>
+              </div>
+            </div>
+            <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              ${unassignedChannels.map(ch => renderChannelCard(ch, null, staffMap)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    // --- Channel Card Component ---
+    function renderChannelCard(channel, parentEmail, staffMap) {
+      const cfg = PLATFORM_CONFIG[channel.platform] || PLATFORM_CONFIG['Other'];
+      const chStaff = staffMap[channel.assigned_staff_id] || (parentEmail ? staffMap[parentEmail.assigned_staff_id] : null);
+      const chPassword = channel.password_plain || (parentEmail ? parentEmail.password_plain : '');
+      const statusBadge = getStatusBadge(channel.status);
+
+      return `
+        <div class="glass-card p-4 rounded-xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between space-y-3 shadow-md">
+          
+          <!-- Channel Top: Platform badge, Name & URL -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold ${cfg.badge} border">
+                <i data-lucide="${cfg.icon}" class="w-3.5 h-3.5"></i>
+                <span>${escapeHtml(channel.platform)}</span>
+              </span>
+              ${statusBadge}
+            </div>
+
+            <div class="pt-1">
+              <h5 class="font-bold text-white text-sm tracking-tight flex items-center gap-1.5">
+                <span class="truncate">${escapeHtml(channel.channel_name)}</span>
+                ${channel.channel_url ? `
+                  <a href="${escapeHtml(channel.channel_url)}" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-indigo-400 flex-shrink-0" title="Mở liên kết kênh">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                  </a>
+                ` : ''}
+              </h5>
+              
+              <div class="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                ${channel.login_username ? `
+                  <span class="text-slate-300 font-mono">@${escapeHtml(channel.login_username)}</span>
+                ` : ''}
+                ${chStaff ? `
+                  <span class="text-indigo-300 flex items-center gap-0.5" title="Nhân sự: ${escapeHtml(chStaff.full_name)}">
+                    <i data-lucide="user" class="w-3 h-3 text-indigo-400"></i>
+                    <span>${escapeHtml(chStaff.full_name)}</span>
+                  </span>
+                ` : ''}
+              </div>
+            </div>
+
+            ${channel.notes ? `
+              <p class="text-[11px] text-slate-400/90 bg-slate-900/60 p-1.5 rounded-lg border border-slate-800 line-clamp-2">
+                ${escapeHtml(channel.notes)}
+              </p>
+            ` : ''}
+          </div>
+
+          <!-- Channel Bottom: Password & Actions -->
+          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+            <!-- Channel Password -->
+            <div class="flex items-center bg-slate-950/70 border border-slate-800 rounded-lg px-2 py-0.5 text-xs font-mono">
+              <span class="text-slate-500 mr-1.5 text-[9px] uppercase font-sans">MK:</span>
+              <span id="pass_ch_${channel.channel_id}" class="text-slate-300 select-all tracking-wider text-[11px]">••••••••</span>
+              
+              <button
+                onclick="togglePasswordDisplay('pass_ch_${channel.channel_id}', '${escapeJs(chPassword || '')}', this)"
+                class="ml-1.5 p-0.5 text-slate-400 hover:text-white rounded"
+                title="Hiện / Ẩn MK"
+              >
+                <i data-lucide="eye" class="w-3 h-3"></i>
+              </button>
+
+              <button
+                onclick="copyToClipboard('${escapeJs(chPassword || '')}', 'Đã sao chép mật khẩu Kênh!')"
+                class="p-0.5 text-slate-400 hover:text-indigo-400 rounded"
+                title="Sao chép MK"
+              >
+                <i data-lucide="copy" class="w-3 h-3"></i>
+              </button>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-1">
+              <button
+                onclick="openEditChannelModal('${escapeHtml(channel.channel_id)}')"
+                class="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
+                title="Sửa Kênh"
+              >
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              </button>
+              <button
+                onclick="promptDelete('channel', '${escapeHtml(channel.channel_id)}', '${escapeHtml(channel.channel_name)}')"
+                class="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg"
+                title="Xóa Kênh"
+              >
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      `;
+    }
+
+    // --- Status Badge Helper ---
+    function getStatusBadge(status) {
+      const s = (status || 'ACTIVE').toUpperCase();
+      switch (s) {
+        case 'ACTIVE':
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>`;
+        case 'LOCKED':
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">LOCKED</span>`;
+        case 'SUSPENDED':
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20">SUSPENDED</span>`;
+        case 'APPEALING':
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">APPEALING</span>`;
+        case 'RESIGNED':
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">RESIGNED</span>`;
+        default:
+          return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-700 text-slate-300">${escapeHtml(s)}</span>`;
+      }
+    }
+
+    // --- Tree Expand / Collapse ---
+    function toggleEmailExpand(emailId) {
+      if (appState.expandedEmails.has(emailId)) {
+        appState.expandedEmails.delete(emailId);
+      } else {
+        appState.expandedEmails.add(emailId);
+      }
+      renderDashboard();
+    }
+
+    // --- Password Display & Copy Utilities ---
+    function togglePasswordDisplay(elementId, realValue, btnEl) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      if (el.textContent === '••••••••') {
+        el.textContent = realValue || '(trống)';
+        if (btnEl) btnEl.innerHTML = '<i data-lucide="eye-off" class="w-3.5 h-3.5"></i>';
+      } else {
+        el.textContent = '••••••••';
+        if (btnEl) btnEl.innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5"></i>';
+      }
+      lucide.createIcons();
+    }
+
+    function togglePasswordVisibility(inputId, btnEl) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btnEl.innerHTML = '<i data-lucide="eye-off" class="w-4 h-4"></i>';
+      } else {
+        input.type = 'password';
+        btnEl.innerHTML = '<i data-lucide="eye" class="w-4 h-4"></i>';
+      }
+      lucide.createIcons();
+    }
+
+    function copyToClipboard(text, successMsg = 'Đã sao chép vào bộ nhớ tạm!') {
+      if (!text) {
+        showToast('Mục này đang trống, không có gì để sao chép', 'info');
+        return;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(successMsg, 'success');
+      }).catch(() => {
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast(successMsg, 'success');
+      });
+    }
+
+    function generateStrongPassword(targetInputId) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
+      let pass = '';
+      for (let i = 0; i < 16; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      document.getElementById(targetInputId).value = pass;
+      showToast('Đã tạo mật khẩu mạnh ngẫu nhiên!', 'info');
+    }
+
+    function generateRandomKey(targetInputId) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let key = '';
+      for (let i = 0; i < 32; i++) {
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      document.getElementById(targetInputId).value = key;
+    }
+
+    // --- Modal Management: Email ---
+    function openEmailModal() {
+      document.getElementById('emailForm').reset();
+      document.getElementById('emailFormId').value = '';
+      document.getElementById('emailModalTitle').textContent = 'Thêm Hộp Thư Email Mới';
+      populateStaffDropdowns();
+      document.getElementById('emailModal').classList.remove('hidden');
+    }
+
+    function openEditEmailModal(emailId) {
+      const email = appState.emails.find(e => e.email_id === emailId);
+      if (!email) return;
+
+      document.getElementById('emailFormId').value = email.email_id;
+      document.getElementById('emailFormAddress').value = email.email_address;
+      document.getElementById('emailFormPassword').value = email.password_plain || '';
+      document.getElementById('emailFormRecoveryEmail').value = email.recovery_email || '';
+      document.getElementById('emailFormRecoveryPhone').value = email.recovery_phone || '';
+      document.getElementById('emailFormTwoFa').value = email.two_factor_plain || '';
+      document.getElementById('emailFormStaff').value = email.assigned_staff_id || '';
+      document.getElementById('emailFormStatus').value = email.status || 'ACTIVE';
+      document.getElementById('emailFormNotes').value = email.notes || '';
+
+      document.getElementById('emailModalTitle').textContent = 'Chỉnh sửa Email: ' + email.email_address;
+      document.getElementById('emailModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeEmailModal() {
+      document.getElementById('emailModal').classList.add('hidden');
+    }
+
+    async function handleEmailFormSubmit(e) {
+      e.preventDefault();
+      const saveBtn = document.getElementById('saveEmailBtn');
+      saveBtn.disabled = true;
+
+      const payload = {
+        email_id: document.getElementById('emailFormId').value,
+        email_address: document.getElementById('emailFormAddress').value,
+        password_plain: document.getElementById('emailFormPassword').value,
+        recovery_email: document.getElementById('emailFormRecoveryEmail').value,
+        recovery_phone: document.getElementById('emailFormRecoveryPhone').value,
+        two_factor_plain: document.getElementById('emailFormTwoFa').value,
+        assigned_staff_id: document.getElementById('emailFormStaff').value,
+        status: document.getElementById('emailFormStatus').value,
+        notes: document.getElementById('emailFormNotes').value
+      };
+
+      try {
+        const res = await callBackend('saveEmail', [payload]);
+        if (res.success && res.data) {
+          showToast('Đã lưu tài khoản Email thành công!', 'success');
+          closeEmailModal();
+          // Update in local state
+          const idx = appState.emails.findIndex(item => item.email_id === res.data.email_id);
+          if (idx >= 0) {
+            appState.emails[idx] = res.data;
+          } else {
+            appState.emails.unshift(res.data);
+            appState.expandedEmails.add(res.data.email_id);
+          }
+          populateEmailDropdown();
+          updateMetrics();
+          renderDashboard();
+        } else {
+          showToast(res.error || 'Lỗi khi lưu Email', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi gọi API: ' + (err.message || String(err)), 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    // --- Modal Management: Channel ---
+    function openChannelModal() {
+      document.getElementById('channelForm').reset();
+      document.getElementById('channelFormId').value = '';
+      document.getElementById('channelModalTitle').textContent = 'Thêm Kênh Mạng Xã Hội Mới';
+      populateEmailDropdown();
+      populateStaffDropdowns();
+      document.getElementById('channelModal').classList.remove('hidden');
+    }
+
+    function openChannelModalForEmail(emailId) {
+      openChannelModal();
+      document.getElementById('channelFormEmailId').value = emailId;
+    }
+
+    function openEditChannelModal(channelId) {
+      const ch = appState.channels.find(c => c.channel_id === channelId);
+      if (!ch) return;
+
+      populateEmailDropdown();
+      populateStaffDropdowns();
+
+      document.getElementById('channelFormId').value = ch.channel_id;
+      document.getElementById('channelFormEmailId').value = ch.email_id;
+      document.getElementById('channelFormPlatform').value = ch.platform || 'TikTok';
+      document.getElementById('channelFormName').value = ch.channel_name;
+      document.getElementById('channelFormUrl').value = ch.channel_url || '';
+      document.getElementById('channelFormUsername').value = ch.login_username || '';
+      document.getElementById('channelFormPassword').value = ch.password_plain || '';
+      document.getElementById('channelFormStaff').value = ch.assigned_staff_id || '';
+      document.getElementById('channelFormStatus').value = ch.status || 'ACTIVE';
+      document.getElementById('channelFormNotes').value = ch.notes || '';
+
+      document.getElementById('channelModalTitle').textContent = 'Chỉnh sửa Kênh: ' + ch.channel_name;
+      document.getElementById('channelModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeChannelModal() {
+      document.getElementById('channelModal').classList.add('hidden');
+    }
+
+    async function handleChannelFormSubmit(e) {
+      e.preventDefault();
+      const saveBtn = document.getElementById('saveChannelBtn');
+      saveBtn.disabled = true;
+
+      const payload = {
+        channel_id: document.getElementById('channelFormId').value,
+        email_id: document.getElementById('channelFormEmailId').value,
+        platform: document.getElementById('channelFormPlatform').value,
+        channel_name: document.getElementById('channelFormName').value,
+        channel_url: document.getElementById('channelFormUrl').value,
+        login_username: document.getElementById('channelFormUsername').value,
+        password_plain: document.getElementById('channelFormPassword').value,
+        assigned_staff_id: document.getElementById('channelFormStaff').value,
+        status: document.getElementById('channelFormStatus').value,
+        notes: document.getElementById('channelFormNotes').value
+      };
+
+      try {
+        const res = await callBackend('saveChannel', [payload]);
+        if (res.success && res.data) {
+          showToast('Đã lưu Kênh mạng xã hội thành công!', 'success');
+          closeChannelModal();
+
+          const idx = appState.channels.findIndex(item => item.channel_id === res.data.channel_id);
+          if (idx >= 0) {
+            appState.channels[idx] = res.data;
+          } else {
+            appState.channels.push(res.data);
+          }
+          if (res.data.email_id) {
+            appState.expandedEmails.add(res.data.email_id);
+          }
+          updateMetrics();
+          renderDashboard();
+        } else {
+          showToast(res.error || 'Lỗi khi lưu Kênh', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi gọi API: ' + (err.message || String(err)), 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    // --- Modal Management: Staff ---
+    function openStaffModal() {
+      resetStaffForm();
+      renderStaffTable();
+      document.getElementById('staffModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeStaffModal() {
+      document.getElementById('staffModal').classList.add('hidden');
+    }
+
+    function resetStaffForm() {
+      document.getElementById('staffForm').reset();
+      document.getElementById('staffFormId').value = '';
+      document.getElementById('staffFormHeading').innerHTML = '<i data-lucide="user-plus" class="w-4 h-4 text-indigo-400"></i><span>Thêm Nhân sự Mới</span>';
+      document.getElementById('saveStaffBtnText').textContent = 'Thêm nhân sự';
+      document.getElementById('cancelEditStaffBtn').classList.add('hidden');
+      lucide.createIcons();
+    }
+
+    function editStaff(staffId) {
+      const staff = appState.staff.find(s => s.staff_id === staffId);
+      if (!staff) return;
+
+      document.getElementById('staffFormId').value = staff.staff_id;
+      document.getElementById('staffFormName').value = staff.full_name;
+      document.getElementById('staffFormDept').value = staff.department || '';
+      document.getElementById('staffFormPhone').value = staff.phone || '';
+      document.getElementById('staffFormStatus').value = staff.status || 'ACTIVE';
+
+      document.getElementById('staffFormHeading').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-indigo-400"></i><span>Sửa Nhân sự: ${escapeHtml(staff.full_name)}</span>`;
+      document.getElementById('saveStaffBtnText').textContent = 'Cập nhật';
+      document.getElementById('cancelEditStaffBtn').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function renderStaffTable() {
+      const tbody = document.getElementById('staffTableBody');
+      if (appState.staff.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-slate-500">Chưa có dữ liệu nhân sự.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = appState.staff.map(s => `
+        <tr class="hover:bg-slate-900/50 transition-colors">
+          <td class="px-3 py-2.5 font-mono text-[11px] text-slate-400">${escapeHtml(s.staff_id)}</td>
+          <td class="px-3 py-2.5 font-semibold text-white">${escapeHtml(s.full_name)}</td>
+          <td class="px-3 py-2.5 text-slate-300">${escapeHtml(s.department || '-')}</td>
+          <td class="px-3 py-2.5 text-slate-400 font-mono text-[11px]">${escapeHtml(s.phone || '-')}</td>
+          <td class="px-3 py-2.5">${getStatusBadge(s.status)}</td>
+          <td class="px-3 py-2.5 text-right space-x-1">
+            <button onclick="editStaff('${escapeHtml(s.staff_id)}')" class="p-1 text-slate-400 hover:text-white" title="Sửa">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="promptDelete('staff', '${escapeHtml(s.staff_id)}', '${escapeHtml(s.full_name)}')" class="p-1 text-slate-400 hover:text-rose-400" title="Xóa">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    async function handleStaffFormSubmit(e) {
+      e.preventDefault();
+      const saveBtn = document.getElementById('saveStaffBtn');
+      saveBtn.disabled = true;
+
+      const payload = {
+        staff_id: document.getElementById('staffFormId').value,
+        full_name: document.getElementById('staffFormName').value,
+        department: document.getElementById('staffFormDept').value,
+        phone: document.getElementById('staffFormPhone').value,
+        status: document.getElementById('staffFormStatus').value
+      };
+
+      try {
+        const res = await callBackend('saveStaff', [payload]);
+        if (res.success && res.data) {
+          showToast('Đã lưu thông tin nhân sự!', 'success');
+          const idx = appState.staff.findIndex(s => s.staff_id === res.data.staff_id);
+          if (idx >= 0) {
+            appState.staff[idx] = res.data;
+          } else {
+            appState.staff.push(res.data);
+          }
+          resetStaffForm();
+          renderStaffTable();
+          populateStaffDropdowns();
+          updateMetrics();
+          renderDashboard();
+        } else {
+          showToast(res.error || 'Lỗi khi lưu nhân sự', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi gọi API: ' + (err.message || String(err)), 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    // --- Modal Management: Delete Confirmation ---
+    function promptDelete(type, id, displayName) {
+      appState.pendingDelete = { type, id, displayName };
+      const typeLabel = type === 'email' ? 'hộp thư Email' : (type === 'channel' ? 'kênh mạng xã hội' : 'nhân sự');
+      document.getElementById('deleteModalMessage').textContent = `Bạn có chắc chắn muốn xóa ${typeLabel}: "${displayName}"? Toàn bộ dữ liệu của bản ghi này trên Google Sheets sẽ bị xóa.`;
+      document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      appState.pendingDelete = null;
+      document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    async function executeConfirmedDelete() {
+      if (!appState.pendingDelete) return;
+      const { type, id, displayName } = appState.pendingDelete;
+      const confirmBtn = document.getElementById('confirmDeleteBtn');
+      confirmBtn.disabled = true;
+
+      try {
+        const res = await callBackend('deleteItem', [type, id]);
+        if (res.success) {
+          showToast(`Đã xóa thành công "${displayName}"!`, 'success');
+          closeDeleteModal();
+
+          if (type === 'email') {
+            appState.emails = appState.emails.filter(e => e.email_id !== id);
+          } else if (type === 'channel') {
+            appState.channels = appState.channels.filter(c => c.channel_id !== id);
+          } else if (type === 'staff') {
+            appState.staff = appState.staff.filter(s => s.staff_id !== id);
+            renderStaffTable();
+            populateStaffDropdowns();
+          }
+          populateEmailDropdown();
+          updateMetrics();
+          renderDashboard();
+        } else {
+          showToast(res.error || 'Không thể xóa bản ghi', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi xóa: ' + (err.message || String(err)), 'error');
+      } finally {
+        confirmBtn.disabled = false;
+      }
+    }
+
+    // --- Modal Management: System Setup ---
+    function openSetupModal() {
+      const apiUrlInput = document.getElementById('setupApiUrl');
+      if (apiUrlInput) {
+        apiUrlInput.value = getApiUrl();
+      }
+      document.getElementById('setupModal').classList.remove('hidden');
+    }
+
+    function closeSetupModal() {
+      document.getElementById('setupModal').classList.add('hidden');
+    }
+
+    async function handleSetupFormSubmit(e) {
+      e.preventDefault();
+      const saveBtn = document.getElementById('saveSetupBtn');
+      saveBtn.disabled = true;
+
+      const apiUrlInput = document.getElementById('setupApiUrl');
+      if (apiUrlInput && apiUrlInput.value.trim()) {
+        localStorage.setItem('smm_api_url', apiUrlInput.value.trim());
+      }
+
+      const payload = {
+        spreadsheetId: document.getElementById('setupSpreadsheetId').value,
+        masterPassword: document.getElementById('setupMasterPassword').value,
+        encryptionKey: document.getElementById('setupEncryptionKey').value
+      };
+
+      try {
+        const res = await callBackend('saveSystemSetup', [payload]);
+        if (res.success) {
+          showToast('Cấu hình hệ thống thành công!', 'success');
+          closeSetupModal();
+          loadAppData();
+        } else {
+          showToast(res.error || 'Lỗi khi lưu cấu hình', 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi khi gọi API: ' + (err.message || String(err)), 'error');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    // --- Toast Notification System ---
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      let icon = 'info';
+      let borderClass = 'border-slate-700';
+      let bgClass = 'bg-slate-900/90 text-white';
+
+      if (type === 'success') {
+        icon = 'check-circle';
+        borderClass = 'border-emerald-500/30';
+        bgClass = 'bg-slate-900/95 text-emerald-300';
+      } else if (type === 'error') {
+        icon = 'alert-triangle';
+        borderClass = 'border-rose-500/30';
+        bgClass = 'bg-slate-900/95 text-rose-300';
+      }
+
+      toast.className = `p-3.5 rounded-xl border ${borderClass} ${bgClass} shadow-xl backdrop-blur-md flex items-center gap-2.5 text-xs font-medium pointer-events-auto transition-all transform translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <i data-lucide="${icon}" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="flex-1">${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      // Animate in
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      // Auto dismiss after 3.5s
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // --- XSS Escaping Utilities ---
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escapeJs(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
+    }
+  </script>
+</body>
+</html>
