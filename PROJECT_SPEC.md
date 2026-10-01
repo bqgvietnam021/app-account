@@ -11,7 +11,7 @@
 * **Mở rộng tương lai:** Phân quyền nhân viên tra cứu/bàn giao tài nguyên số mà không lộ mật khẩu gốc.
 * **Nguyên tắc cốt lõi:**
   * **Zero Direct Access:** Người dùng thao tác qua Web UI, không tiếp cận trực tiếp file Google Sheets.
-  * **End-to-End Field Encryption:** Mật khẩu và mã bảo mật được mã hóa AES-256 trước khi lưu vào Sheets.
+  * **Direct Field Storage:** Mật khẩu và mã 2FA được lưu trữ trực tiếp (Plaintext) vào Google Sheets theo yêu cầu quản trị, trên Web UI vẫn hỗ trợ ẩn/hiện và sao chép an toàn.
   * **Public Repo Safe:** Toàn bộ mã nguồn public trên GitHub không được chứa bất kỳ Secret, Key hay ID nhạy cảm nào.
 
 ---
@@ -60,10 +60,10 @@ Hệ thống sử dụng mô hình quan hệ phân cấp **1-Nhiều (Parent - C
 | :--- | :--- | :--- | :--- |
 | `email_id` | String | Mã định danh email (EM001, EM002...) | PK |
 | `email_address`| String | Địa chỉ email chính | Plaintext |
-| `password_enc` | String | Mật khẩu hộp thư | **Mã hóa AES-256** |
+| `password_enc` | String | Mật khẩu hộp thư | Plaintext |
 | `recovery_email`| String | Email khôi phục | Plaintext |
 | `recovery_phone`| String | Số điện thoại khôi phục | Plaintext |
-| `two_fa_backup`| String | Khóa 2FA secret key / 8-digit backup codes | **Mã hóa AES-256** |
+| `two_fa_backup`| String | Khóa 2FA secret key / 8-digit backup codes | Plaintext |
 | `managed_by` | String | `staff_id` người chịu trách nhiệm email | FK -> Staff.staff_id |
 | `status` | String | `ACTIVE`, `LOCKED`, `DISABLED` | Trạng thái hộp thư |
 | `notes` | String | Ghi chú thiết bị đăng nhập, vị trí sim... | Plaintext |
@@ -78,7 +78,7 @@ Hệ thống sử dụng mô hình quan hệ phân cấp **1-Nhiều (Parent - C
 | `channel_name` | String | Tên hiển thị của kênh / page | Plaintext |
 | `channel_url` | String | Đường link trực tiếp đến kênh | Plaintext |
 | `username` | String | ID đăng nhập (nếu khác email) | Plaintext |
-| `password_enc` | String | Mật khẩu riêng của kênh (nếu có) | **Mã hóa AES-256** |
+| `password_enc` | String | Mật khẩu riêng của kênh (nếu có) | Plaintext |
 | `assigned_to` | String | `staff_id` người trực tiếp vận hành kênh | FK -> Staff.staff_id |
 | `status` | String | `ACTIVE`, `SUSPENDED`, `APPEALING` | Tình trạng kênh |
 | `notes` | String | Ngách nội dung, chính sách gậy bản quyền... | Plaintext |

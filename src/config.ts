@@ -16,7 +16,7 @@ function getSystemConfig(): SystemConfig {
   const masterPassword = props.getProperty(SCRIPT_PROP_MASTER_PASSWORD) || '';
   const encryptionKey = props.getProperty(SCRIPT_PROP_ENCRYPTION_KEY) || '';
 
-  const isConfigured = Boolean(spreadsheetId && masterPassword && encryptionKey);
+  const isConfigured = Boolean(spreadsheetId && masterPassword);
 
   return {
     spreadsheetId,

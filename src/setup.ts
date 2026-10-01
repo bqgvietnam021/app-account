@@ -6,11 +6,11 @@
 /**
  * Hàm khởi tạo hoặc cập nhật Script Properties thủ công qua Apps Script Editor
  */
-function setupInitialProperties(spreadsheetId: string, masterPassword: string, secretKey: string): void {
+function setupInitialProperties(spreadsheetId: string, masterPassword: string, secretKey?: string): void {
   saveSystemConfig({
     spreadsheetId,
     masterPassword,
-    encryptionKey: secretKey
+    encryptionKey: secretKey || ''
   });
   console.log('✅ Đã lưu cấu hình Script Properties thành công!');
 }

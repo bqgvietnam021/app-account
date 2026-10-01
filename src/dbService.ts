@@ -14,8 +14,8 @@ const TAB_CHANNELS = 'Channels';
 
 const DEFAULT_HEADERS: Record<string, string[]> = {
   [TAB_STAFF]: ['staff_id', 'full_name', 'department', 'phone', 'status', 'notes'],
-  [TAB_EMAILS]: ['email_id', 'email_address', 'password_enc', 'recovery_email', 'recovery_phone', 'two_factor_enc', 'assigned_staff_id', 'status', 'notes', 'updated_at'],
-  [TAB_CHANNELS]: ['channel_id', 'email_id', 'platform', 'channel_name', 'channel_url', 'login_username', 'password_enc', 'assigned_staff_id', 'status', 'notes', 'updated_at']
+  [TAB_EMAILS]: ['email_id', 'email_address', 'password', 'recovery_email', 'recovery_phone', 'two_factor', 'assigned_staff_id', 'status', 'notes', 'updated_at'],
+  [TAB_CHANNELS]: ['channel_id', 'email_id', 'platform', 'channel_name', 'channel_url', 'login_username', 'password', 'assigned_staff_id', 'status', 'notes', 'updated_at']
 };
 
 /**
@@ -226,10 +226,10 @@ function getEmailAccounts(): EmailAccount[] {
 
   const colId = findColIndex(headerMap, ['email_id', 'id']) || 1;
   const colAddress = findColIndex(headerMap, ['email_address', 'email', 'parent_email']) || 2;
-  const colPass = findColIndex(headerMap, ['password_enc', 'password']) || 3;
+  const colPass = findColIndex(headerMap, ['password', 'password_enc', 'pass']) || 3;
   const colRecEmail = findColIndex(headerMap, ['recovery_email', 'rec_email']) || 4;
   const colRecPhone = findColIndex(headerMap, ['recovery_phone', 'rec_phone']) || 5;
-  const colTwoFa = findColIndex(headerMap, ['two_factor_enc', 'two_fa_backup', '2fa', 'two_factor']) || 6;
+  const colTwoFa = findColIndex(headerMap, ['two_factor', 'two_fa', '2fa', 'two_fa_backup', 'two_factor_enc']) || 6;
   const colStaff = findColIndex(headerMap, ['assigned_staff_id', 'managed_by', 'staff_id', 'assigned_to']) || 7;
   const colStatus = findColIndex(headerMap, ['status']) || 8;
   const colNotes = findColIndex(headerMap, ['notes', 'note']) || 9;
@@ -248,11 +248,11 @@ function getEmailAccounts(): EmailAccount[] {
       email_id: emailId,
       email_address: emailAddress,
       password_enc: encPass,
-      password_plain: decrypt(encPass),
+      password_plain: encPass.startsWith('ENC::') ? decrypt(encPass) : encPass,
       recovery_email: String(row[colRecEmail - 1] || '').trim(),
       recovery_phone: String(row[colRecPhone - 1] || '').trim(),
       two_factor_enc: enc2Fa,
-      two_factor_plain: decrypt(enc2Fa),
+      two_factor_plain: enc2Fa.startsWith('ENC::') ? decrypt(enc2Fa) : enc2Fa,
       assigned_staff_id: String(row[colStaff - 1] || '').trim(),
       status: String(row[colStatus - 1] || 'ACTIVE').trim(),
       notes: String(row[colNotes - 1] || '').trim(),
@@ -271,10 +271,10 @@ function saveEmailRecord(data: Partial<EmailAccount>): EmailAccount {
 
   const colId = findColIndex(headerMap, ['email_id', 'id']) || 1;
   const colAddress = findColIndex(headerMap, ['email_address', 'email']) || 2;
-  const colPass = findColIndex(headerMap, ['password_enc', 'password']) || 3;
+  const colPass = findColIndex(headerMap, ['password', 'password_enc', 'pass']) || 3;
   const colRecEmail = findColIndex(headerMap, ['recovery_email', 'rec_email']) || 4;
   const colRecPhone = findColIndex(headerMap, ['recovery_phone', 'rec_phone']) || 5;
-  const colTwoFa = findColIndex(headerMap, ['two_factor_enc', 'two_fa_backup', '2fa', 'two_factor']) || 6;
+  const colTwoFa = findColIndex(headerMap, ['two_factor', 'two_fa', '2fa', 'two_fa_backup', 'two_factor_enc']) || 6;
   const colStaff = findColIndex(headerMap, ['assigned_staff_id', 'managed_by', 'staff_id', 'assigned_to']) || 7;
   const colStatus = findColIndex(headerMap, ['status']) || 8;
   const colNotes = findColIndex(headerMap, ['notes', 'note']) || 9;
@@ -298,26 +298,20 @@ function saveEmailRecord(data: Partial<EmailAccount>): EmailAccount {
     emailId = generateNextId(existingEmails.map(e => e.email_id), 'EM');
   }
 
-  // Mật khẩu & 2FA: Nếu truyền dạng plain thì mã hóa, nếu đã là enc thì giữ nguyên
-  let passEnc = data.password_enc || '';
-  if (data.password_plain !== undefined) {
-    passEnc = encrypt(data.password_plain);
-  }
-  let twoFaEnc = data.two_factor_enc || '';
-  if (data.two_factor_plain !== undefined) {
-    twoFaEnc = encrypt(data.two_factor_plain);
-  }
+  // Mật khẩu & 2FA: Lưu trực tiếp plain text vào Sheets (không mã hóa)
+  const passValue = data.password_plain !== undefined ? data.password_plain : (data.password_enc || '');
+  const twoFaValue = data.two_factor_plain !== undefined ? data.two_factor_plain : (data.two_factor_enc || '');
 
   const nowIso = new Date().toISOString();
   const result: EmailAccount = {
     email_id: emailId,
     email_address: (data.email_address || '').trim(),
-    password_enc: passEnc,
-    password_plain: decrypt(passEnc),
+    password_enc: passValue,
+    password_plain: passValue.startsWith('ENC::') ? decrypt(passValue) : passValue,
     recovery_email: (data.recovery_email || '').trim(),
     recovery_phone: (data.recovery_phone || '').trim(),
-    two_factor_enc: twoFaEnc,
-    two_factor_plain: decrypt(twoFaEnc),
+    two_factor_enc: twoFaValue,
+    two_factor_plain: twoFaValue.startsWith('ENC::') ? decrypt(twoFaValue) : twoFaValue,
     assigned_staff_id: (data.assigned_staff_id || '').trim(),
     status: data.status || 'ACTIVE',
     notes: data.notes || '',
@@ -327,10 +321,10 @@ function saveEmailRecord(data: Partial<EmailAccount>): EmailAccount {
   if (rowIndex > 0) {
     // Update row
     sheet.getRange(rowIndex, colAddress).setValue(result.email_address);
-    sheet.getRange(rowIndex, colPass).setValue(result.password_enc);
+    sheet.getRange(rowIndex, colPass).setValue(result.password_plain || '');
     sheet.getRange(rowIndex, colRecEmail).setValue(result.recovery_email);
     sheet.getRange(rowIndex, colRecPhone).setValue(result.recovery_phone);
-    sheet.getRange(rowIndex, colTwoFa).setValue(result.two_factor_enc);
+    sheet.getRange(rowIndex, colTwoFa).setValue(result.two_factor_plain || '');
     sheet.getRange(rowIndex, colStaff).setValue(result.assigned_staff_id);
     sheet.getRange(rowIndex, colStatus).setValue(result.status);
     sheet.getRange(rowIndex, colNotes).setValue(result.notes || '');
@@ -340,10 +334,10 @@ function saveEmailRecord(data: Partial<EmailAccount>): EmailAccount {
     const newRow: any[] = new Array(sheet.getLastColumn()).fill('');
     newRow[colId - 1] = result.email_id;
     newRow[colAddress - 1] = result.email_address;
-    newRow[colPass - 1] = result.password_enc;
+    newRow[colPass - 1] = result.password_plain || '';
     newRow[colRecEmail - 1] = result.recovery_email;
     newRow[colRecPhone - 1] = result.recovery_phone;
-    newRow[colTwoFa - 1] = result.two_factor_enc;
+    newRow[colTwoFa - 1] = result.two_factor_plain || '';
     newRow[colStaff - 1] = result.assigned_staff_id;
     newRow[colStatus - 1] = result.status;
     newRow[colNotes - 1] = result.notes || '';
@@ -374,7 +368,7 @@ function getChannels(): SocialChannel[] {
   const colName = findColIndex(headerMap, ['channel_name', 'name']) || 4;
   const colUrl = findColIndex(headerMap, ['channel_url', 'url', 'link']) || 5;
   const colUsername = findColIndex(headerMap, ['login_username', 'username', 'login_id']) || 6;
-  const colPass = findColIndex(headerMap, ['password_enc', 'password']) || 7;
+  const colPass = findColIndex(headerMap, ['password', 'password_enc', 'pass']) || 7;
   const colStaff = findColIndex(headerMap, ['assigned_staff_id', 'assigned_to', 'staff_id', 'managed_by']) || 8;
   const colStatus = findColIndex(headerMap, ['status']) || 9;
   const colNotes = findColIndex(headerMap, ['notes', 'note']) || 10;
@@ -395,7 +389,7 @@ function getChannels(): SocialChannel[] {
       channel_url: String(row[colUrl - 1] || '').trim(),
       login_username: String(row[colUsername - 1] || '').trim(),
       password_enc: encPass,
-      password_plain: decrypt(encPass),
+      password_plain: encPass.startsWith('ENC::') ? decrypt(encPass) : encPass,
       assigned_staff_id: String(row[colStaff - 1] || '').trim(),
       status: String(row[colStatus - 1] || 'ACTIVE').trim(),
       notes: String(row[colNotes - 1] || '').trim(),
@@ -418,7 +412,7 @@ function saveChannelRecord(data: Partial<SocialChannel>): SocialChannel {
   const colName = findColIndex(headerMap, ['channel_name', 'name']) || 4;
   const colUrl = findColIndex(headerMap, ['channel_url', 'url', 'link']) || 5;
   const colUsername = findColIndex(headerMap, ['login_username', 'username', 'login_id']) || 6;
-  const colPass = findColIndex(headerMap, ['password_enc', 'password']) || 7;
+  const colPass = findColIndex(headerMap, ['password', 'password_enc', 'pass']) || 7;
   const colStaff = findColIndex(headerMap, ['assigned_staff_id', 'assigned_to', 'staff_id', 'managed_by']) || 8;
   const colStatus = findColIndex(headerMap, ['status']) || 9;
   const colNotes = findColIndex(headerMap, ['notes', 'note']) || 10;
@@ -442,10 +436,8 @@ function saveChannelRecord(data: Partial<SocialChannel>): SocialChannel {
     channelId = generateNextId(existingChannels.map(c => c.channel_id), 'CH');
   }
 
-  let passEnc = data.password_enc || '';
-  if (data.password_plain !== undefined) {
-    passEnc = encrypt(data.password_plain);
-  }
+  // Mật khẩu kênh: Lưu trực tiếp plain text vào Sheets (không mã hóa)
+  const passValue = data.password_plain !== undefined ? data.password_plain : (data.password_enc || '');
 
   const nowIso = new Date().toISOString();
   const result: SocialChannel = {
@@ -455,8 +447,8 @@ function saveChannelRecord(data: Partial<SocialChannel>): SocialChannel {
     channel_name: (data.channel_name || '').trim(),
     channel_url: (data.channel_url || '').trim(),
     login_username: (data.login_username || '').trim(),
-    password_enc: passEnc,
-    password_plain: decrypt(passEnc),
+    password_enc: passValue,
+    password_plain: passValue.startsWith('ENC::') ? decrypt(passValue) : passValue,
     assigned_staff_id: (data.assigned_staff_id || '').trim(),
     status: data.status || 'ACTIVE',
     notes: data.notes || '',
@@ -470,7 +462,7 @@ function saveChannelRecord(data: Partial<SocialChannel>): SocialChannel {
     sheet.getRange(rowIndex, colName).setValue(result.channel_name);
     sheet.getRange(rowIndex, colUrl).setValue(result.channel_url);
     sheet.getRange(rowIndex, colUsername).setValue(result.login_username);
-    sheet.getRange(rowIndex, colPass).setValue(result.password_enc);
+    sheet.getRange(rowIndex, colPass).setValue(result.password_plain || '');
     sheet.getRange(rowIndex, colStaff).setValue(result.assigned_staff_id);
     sheet.getRange(rowIndex, colStatus).setValue(result.status);
     sheet.getRange(rowIndex, colNotes).setValue(result.notes || '');
@@ -484,7 +476,7 @@ function saveChannelRecord(data: Partial<SocialChannel>): SocialChannel {
     newRow[colName - 1] = result.channel_name;
     newRow[colUrl - 1] = result.channel_url;
     newRow[colUsername - 1] = result.login_username;
-    newRow[colPass - 1] = result.password_enc;
+    newRow[colPass - 1] = result.password_plain || '';
     newRow[colStaff - 1] = result.assigned_staff_id;
     newRow[colStatus - 1] = result.status;
     newRow[colNotes - 1] = result.notes || '';

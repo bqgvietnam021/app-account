@@ -520,7 +520,7 @@
             <input
               type="text"
               id="emailFormPassword"
-              placeholder="Nhập mật khẩu (sẽ được mã hóa AES)..."
+              placeholder="Nhập mật khẩu..."
               class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500 text-sm font-mono"
             >
           </div>
@@ -893,8 +893,8 @@
             <i data-lucide="settings" class="w-4 h-4"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white">Cấu hình Hệ thống & Bảo mật</h3>
-            <p class="text-[11px] text-slate-400">Thiết lập Google Sheets ID & Khóa mã hóa AES</p>
+            <h3 class="text-base font-bold text-white">Cấu hình Hệ thống</h3>
+            <p class="text-[11px] text-slate-400">Thiết lập Google Sheets ID & Mật khẩu Quản trị Web UI</p>
           </div>
         </div>
         <button onclick="closeSetupModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
@@ -941,25 +941,6 @@
             placeholder="Thiết lập mật khẩu quản trị..."
             class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500"
           >
-        </div>
-
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="font-medium text-slate-300">
-              Khóa Mã Hóa Bí Mật (<code class="text-indigo-400">ENCRYPTION_SECRET_KEY</code>) <span class="text-rose-400">*</span>
-            </label>
-            <button type="button" onclick="generateRandomKey('setupEncryptionKey')" class="text-indigo-400 hover:text-indigo-300 text-[11px]">
-              Sinh chuỗi ngẫu nhiên
-            </button>
-          </div>
-          <input
-            type="text"
-            id="setupEncryptionKey"
-            required
-            placeholder="Chuỗi khóa AES-256 (tối thiểu 16 ký tự)..."
-            class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
-          >
-          <p class="text-[11px] text-amber-400/90 mt-1">⚠️ Cực kỳ quan trọng: Lưu lại khóa này cẩn thận. Mất khóa này sẽ không giải mã được mật khẩu trong Sheets!</p>
         </div>
 
         <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
@@ -1123,9 +1104,9 @@
         case 'login':
           return 'Đang xác thực thông tin...';
         case 'saveEmail':
-          return 'Đang mã hóa & lưu Email vào Sheets...';
+          return 'Đang lưu Email vào Sheets...';
         case 'saveChannel':
-          return 'Đang mã hóa & lưu Kênh vào Sheets...';
+          return 'Đang lưu Kênh vào Sheets...';
         case 'saveStaff':
           return 'Đang lưu danh mục nhân sự...';
         case 'deleteItem':
@@ -2261,9 +2242,9 @@
       }
 
       const payload = {
-        spreadsheetId: document.getElementById('setupSpreadsheetId').value,
-        masterPassword: document.getElementById('setupMasterPassword').value,
-        encryptionKey: document.getElementById('setupEncryptionKey').value
+        spreadsheetId: (document.getElementById('setupSpreadsheetId').value || '').trim(),
+        masterPassword: (document.getElementById('setupMasterPassword').value || '').trim(),
+        encryptionKey: document.getElementById('setupEncryptionKey') ? (document.getElementById('setupEncryptionKey').value || '').trim() : ''
       };
 
       try {

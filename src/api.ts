@@ -120,20 +120,20 @@ function checkConfigStatus(): ApiResponse<{ isConfigured: boolean; hasSpreadshee
 function saveSystemSetup(params: {
   spreadsheetId: string;
   masterPassword: string;
-  encryptionKey: string;
+  encryptionKey?: string;
 }): ApiResponse<boolean> {
   try {
-    if (!params.spreadsheetId || !params.masterPassword || !params.encryptionKey) {
+    if (!params.spreadsheetId || !params.masterPassword) {
       return {
         success: false,
-        error: 'Vui lòng điền đầy đủ: SPREADSHEET_ID, APP_MASTER_PASSWORD và ENCRYPTION_SECRET_KEY!'
+        error: 'Vui lòng điền đầy đủ: SPREADSHEET_ID và APP_MASTER_PASSWORD!'
       };
     }
 
     saveSystemConfig({
       spreadsheetId: params.spreadsheetId.trim(),
       masterPassword: params.masterPassword.trim(),
-      encryptionKey: params.encryptionKey.trim()
+      encryptionKey: (params.encryptionKey || '').trim()
     });
 
     // Tự động khởi tạo cấu trúc tab nếu cần

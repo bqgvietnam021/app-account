@@ -221,61 +221,16 @@ function utf8BytesToString(bytes: number[]): string {
 const ENC_PREFIX = 'ENC::';
 
 /**
- * Hàm mã hóa chuỗi bằng AES-256 (CTR Mode)
- * @param plainText Chuỗi cần mã hóa (mật khẩu, 2fa, ...)
- * @param customKey Secret key tùy chọn (mặc định lấy từ ScriptProperties)
+ * Hàm mã hóa chuỗi (Lưu trực tiếp dạng Plain Text theo yêu cầu người dùng)
+ * @param plainText Chuỗi mật khẩu, 2fa, ...
+ * @param customKey Secret key tùy chọn (không bắt buộc)
  */
 function encrypt(plainText: string, customKey?: string): string {
   if (!plainText || typeof plainText !== 'string') {
     return '';
   }
-
-  const keyString = customKey || getSystemConfig().encryptionKey;
-  if (!keyString) {
-    // Nếu chưa cấu hình encryption key, lưu tạm với tiền tố cảnh báo
-    return plainText;
-  }
-
-  const keyBytes = deriveKey256(keyString);
-  const roundKeys = aesKeyExpansion(keyBytes);
-
-  // Sinh IV ngẫu nhiên 16 bytes
-  const iv: number[] = [];
-  for (let i = 0; i < 16; i++) {
-    iv.push(Math.floor(Math.random() * 256));
-  }
-
-  const plainBytes = stringToUtf8Bytes(plainText);
-  const cipherBytes: number[] = [];
-
-  // CTR mode encryption: E(IV + counter) XOR Plaintext
-  const counterBlock = [...iv];
-  let blockIndex = 0;
-
-  while (blockIndex < plainBytes.length) {
-    const keystream = aesEncryptBlock(counterBlock, roundKeys);
-    const chunkSize = Math.min(16, plainBytes.length - blockIndex);
-
-    for (let i = 0; i < chunkSize; i++) {
-      cipherBytes.push(plainBytes[blockIndex + i] ^ keystream[i]);
-    }
-
-    blockIndex += chunkSize;
-
-    // Increment 128-bit counter
-    for (let c = 15; c >= 0; c--) {
-      counterBlock[c] = (counterBlock[c] + 1) & 0xff;
-      if (counterBlock[c] !== 0) break;
-    }
-  }
-
-  // Ghép [IV (16 bytes)] + [Ciphertext]
-  const combined = iv.concat(cipherBytes);
-  // Encode Base64
-  const signedBytes = combined.map(b => (b > 127 ? b - 256 : b));
-  const base64 = Utilities.base64Encode(signedBytes);
-
-  return ENC_PREFIX + base64;
+  // Lưu trực tiếp dạng plain text (không mã hóa)
+  return plainText;
 }
 
 /**
